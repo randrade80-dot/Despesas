@@ -54,9 +54,35 @@ h2{font-size:15px;margin:18px 2px 6px;display:flex;justify-content:space-between
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ck{display:flex;align-items:center;gap:10px;margin:14px 0 4px;font-size:16px;color:var(--ink)}
 .ck input{width:22px;height:22px}
+.alert{background:var(--card);border:1px solid var(--warn);border-radius:14px;padding:10px 12px;margin:10px 0}
+.alert h4{margin:0 0 4px;font-size:14px;color:var(--warn)}
+.al{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:14px;cursor:pointer}
+.alert h4+.al{border-top:0}
+.al .a1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.al small{display:block;color:var(--mute)}
+.al.bad small{color:var(--bad);font-weight:600}
+.al.hoje small{color:var(--warn);font-weight:600}
+.al b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.dados{display:flex;gap:8px;margin-top:24px}
+.dados .btn{flex:1}
+.hint{color:var(--mute);font-size:12px;text-align:center;margin:6px 0 0}
+#lock{display:none;position:fixed;inset:0;z-index:100;background:var(--bg);align-items:center;justify-content:center;overflow:auto}
+html.locked #lock{display:flex}
+.lk{text-align:center;padding:20px}
+.lt{font-size:22px;font-weight:700}
+.ls{color:var(--mute);margin-top:6px;min-height:22px}
+.dots{display:flex;gap:14px;justify-content:center;margin:18px 0 22px;height:16px}
+.dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--mute)}
+.dot.f{background:var(--accent);border-color:var(--accent)}
+.pad{display:grid;grid-template-columns:repeat(3,76px);gap:14px;justify-content:center}
+.pad button{width:76px;height:76px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:28px}
+.pad button:active{background:var(--track)}
+.bio{display:none;margin:22px auto 0;background:none;border:0;color:var(--accent);font:inherit;font-weight:600;padding:10px}
+.stack{display:grid;gap:8px;margin-top:14px}
 .acts{display:flex;gap:8px;margin-top:14px}
 .acts .btn{flex:1}
 </style>
+<script>try{if(localStorage.getItem("despesas2026-lock"))document.documentElement.className="locked"}catch(e){}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -68,6 +94,9 @@ h2{font-size:15px;margin:18px 2px 6px;display:flex;justify-content:space-between
 </header>
 <main id="app"></main>
 </div>
+<div id="lock"><div class="lk"><div class="lt">🔒 Despesas 2026</div><div class="ls" id="lmsg">Digite o PIN</div><div class="dots" id="ldots"></div><div class="pad" id="lpad"></div><button class="bio" id="lbio" onclick="bioUnlock()">Usar digital / rosto</button></div></div>
+<div class="ov" id="ov2" onclick="if(event.target===this)closeSec()"><div class="sheet" id="sec"></div></div>
+<input type="file" id="fi" accept=".json,application/json" style="display:none" onchange="restore(this)">
 <button class="fab" onclick="openEd(null,'exp')" aria-label="Adicionar">+</button>
 
 <div class="ov" id="ov" onclick="if(event.target===this)closeEd()">
@@ -80,6 +109,7 @@ h2{font-size:15px;margin:18px 2px 6px;display:flex;justify-content:space-between
 <div class="two"><div><label>Valor (R$)</label><input type="number" id="fv" inputmode="decimal" step="0.01"></div>
 <div id="fdw"><label>Vence no dia</label><input type="number" id="fd" inputmode="numeric" min="1" max="31"></div></div>
 <label class="ck" id="fpw"><input type="checkbox" id="fp"> Já está pago</label>
+<label class="ck" id="faw"><input type="checkbox" id="fa"> Aplicar também aos meses seguintes (nome, valor e vencimento)</label>
 <div id="frw"><label>Repetir nos próximos meses (quantos?)</label><input type="number" id="fr" inputmode="numeric" min="0" max="60" placeholder="0 = não repetir"></div>
 <div class="acts"><button class="btn del" id="fdel" onclick="del()">Excluir</button><button class="btn sec" onclick="closeEd()">Cancelar</button><button class="btn" onclick="saveEd()">Salvar</button></div>
 </div>
@@ -161,7 +191,7 @@ function render(){
   var tot=m.exp.reduce(function(a,e){return a+e.v},0);
   var pago=m.exp.reduce(function(a,e){return a+(e.p?e.v:0)},0);
   var pend=tot-pago, pct=tot?Math.round(pago/tot*100):0;
-  var h='<div class="sum"><div class="box big"><small>Saldo do mês (receitas − despesas)</small><b>'+fmt(rec-tot)+'</b></div>'
+  var h=alertHtml()+'<div class="sum"><div class="box big"><small>Saldo do mês (receitas − despesas)</small><b>'+fmt(rec-tot)+'</b></div>'
    +'<div class="box"><small>Receitas</small><b>'+fmt(rec)+'</b></div><div class="box"><small>Despesas</small><b>'+fmt(tot)+'</b></div>'
    +'<div class="box"><small>Pago</small><b style="color:var(--ok)">'+fmt(pago)+'</b></div><div class="box"><small>Falta pagar</small><b style="color:var(--warn)">'+fmt(pend)+'</b></div></div>'
    +'<div class="bar"><i style="width:'+pct+'%"></i></div>';
@@ -175,7 +205,189 @@ function render(){
         return '<div class="row" onclick="openEd(\''+r.id+'\')"><div class="m"><b>'+esc(r.n)+'</b>'+(r.o?'<small>'+esc(r.o)+'</small>':'')+'</div><div class="v" style="color:var(--ok)">'+fmt(r.v)+'</div></div>'}).join("")+'</div>';
     }
   }
+  h+='<div class="dados"><button class="btn sec" onclick="backup()">Salvar backup</button><button class="btn sec" onclick="$(\'fi\').click()">Restaurar backup</button></div><div class="dados" style="margin-top:8px"><button class="btn sec" onclick="openSec()">🔒 Proteção por PIN</button></div><p class="hint">Guarde o arquivo de backup em um lugar seguro (Drive, WhatsApp).</p>';
   document.getElementById("app").innerHTML=h;
+}
+var LK="despesas2026-lock",typed="",busy=false,hiddenAt=0;
+function getLock(){try{return JSON.parse(localStorage.getItem(LK))}catch(e){return null}}
+function setLock(o){try{if(o)localStorage.setItem(LK,JSON.stringify(o));else{localStorage.removeItem(LK);localStorage.removeItem(LK+"-f")}}catch(e){}}
+function getF(){try{return JSON.parse(localStorage.getItem(LK+"-f"))||{n:0,u:0}}catch(e){return {n:0,u:0}}}
+function setF(f){try{localStorage.setItem(LK+"-f",JSON.stringify(f))}catch(e){}}
+function b64(buf){var a=new Uint8Array(buf),t="";for(var i=0;i<a.length;i++)t+=String.fromCharCode(a[i]);return btoa(t)}
+function unb64(t){var b=atob(t),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a}
+function hashPin(pin,salt){
+  return crypto.subtle.importKey("raw",new TextEncoder().encode(pin),"PBKDF2",false,["deriveBits"]).then(function(k){
+    return crypto.subtle.deriveBits({name:"PBKDF2",salt:unb64(salt),iterations:100000,hash:"SHA-256"},k,256)}).then(b64);
+}
+function buildPad(){
+  var h="";
+  [1,2,3,4,5,6,7,8,9,"",0,"⌫"].forEach(function(k){h+=k===""?"<span></span>":'<button onclick="key(\''+k+'\')">'+k+'</button>'});
+  $("lpad").innerHTML=h;
+}
+function drawDots(){
+  var L=getLock(),h="";if(!L)return;
+  for(var i=0;i<L.len;i++)h+='<span class="dot'+(i<typed.length?" f":"")+'"></span>';
+  $("ldots").innerHTML=h;
+}
+function lockNow(){
+  var L=getLock();if(!L)return;
+  typed="";drawDots();$("lmsg").textContent="Digite o PIN";
+  $("lbio").style.display=(L.cred&&window.PublicKeyCredential)?"block":"none";
+  closeEd();closeSec();
+  document.documentElement.classList.add("locked");
+}
+function unlock(){typed="";document.documentElement.classList.remove("locked")}
+function key(k){
+  var L=getLock();if(!L||busy)return;
+  var f=getF(),w=Math.ceil((f.u-Date.now())/1000);
+  if(w>0){$("lmsg").textContent="Muitas tentativas. Aguarde "+w+" s.";return}
+  if(k==="⌫")typed=typed.slice(0,-1);else if(typed.length<L.len)typed+=k;
+  drawDots();
+  if(typed.length!==L.len)return;
+  busy=true;
+  hashPin(typed,L.s).then(function(h){
+    busy=false;
+    if(h===L.h){setF({n:0,u:0});unlock();return}
+    f=getF();f.n++;
+    if(f.n>=5){f.u=Date.now()+30000*(f.n-4);$("lmsg").textContent="Muitas tentativas. Aguarde um pouco."}
+    else $("lmsg").textContent="PIN incorreto ("+f.n+" de 5)";
+    setF(f);typed="";drawDots();
+  }).catch(function(){busy=false;typed="";drawDots();$("lmsg").textContent="Erro ao verificar o PIN"});
+}
+function bioUnlock(){
+  var L=getLock();
+  if(!L||!L.cred||!window.PublicKeyCredential||!navigator.credentials)return;
+  navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),allowCredentials:[{id:unb64(L.cred),type:"public-key"}],userVerification:"required",timeout:60000}})
+    .then(function(){unlock()}).catch(function(){$("lmsg").textContent="Não deu certo. Use o PIN."});
+}
+function enableBio(){
+  if(!window.PublicKeyCredential||!navigator.credentials){alert("Este navegador não permite digital/rosto para o app.");return}
+  navigator.credentials.create({publicKey:{
+    challenge:crypto.getRandomValues(new Uint8Array(32)),
+    rp:{name:"Despesas 2026"},
+    user:{id:crypto.getRandomValues(new Uint8Array(16)),name:"despesas",displayName:"Despesas"},
+    pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],
+    authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required",residentKey:"discouraged"},
+    timeout:60000}}).then(function(c){var L=getLock();L.cred=b64(c.rawId);setLock(L);secUI();alert("Digital/rosto ativado.")})
+    .catch(function(){alert("Não consegui ativar. Confira se o celular tem digital ou rosto cadastrados.")});
+}
+function disableBio(){var L=getLock();L.cred=null;setLock(L);secUI()}
+function openSec(){secUI();$("ov2").classList.add("on")}
+function closeSec(){$("ov2").classList.remove("on")}
+function pinInput(id,label){return '<label>'+label+'</label><input type="password" inputmode="numeric" maxlength="6" id="'+id+'" autocomplete="off">'}
+function secUI(mode){
+  var L=getLock(),h="";
+  if(!L){
+    h='<h3>Proteção por PIN</h3><p class="hint" style="text-align:left">Crie um PIN de 4 a 6 números. Ele será pedido sempre que abrir o app.</p>'+pinInput("p1","Novo PIN")+pinInput("p2","Repita o PIN")
+     +'<div class="acts"><button class="btn sec" onclick="closeSec()">Cancelar</button><button class="btn" onclick="setPin()">Ativar</button></div>';
+  }else if(mode==="change"){
+    h='<h3>Trocar PIN</h3>'+pinInput("p0","PIN atual")+pinInput("p1","Novo PIN")+pinInput("p2","Repita o novo PIN")
+     +'<div class="acts"><button class="btn sec" onclick="secUI()">Voltar</button><button class="btn" onclick="changePin()">Salvar</button></div>';
+  }else if(mode==="remove"){
+    h='<h3>Remover proteção</h3>'+pinInput("p0","PIN atual")
+     +'<div class="acts"><button class="btn sec" onclick="secUI()">Voltar</button><button class="btn del" onclick="removePin()">Remover</button></div>';
+  }else{
+    var t=L.t==null?1:L.t;
+    h='<h3>🔒 Proteção ativa</h3><label>Pedir o PIN de novo depois de ficar fora do app por</label><select id="pt" onchange="setT(this.value)">'
+     +[1,5,15,60].map(function(m){return '<option value="'+m+'"'+(m===t?" selected":"")+'>'+(m===60?"1 hora":m+(m===1?" minuto":" minutos"))+'</option>'}).join("")+'</select>'
+     +'<div class="stack"><button class="btn sec" onclick="'+(L.cred?"disableBio()":"enableBio()")+'">'+(L.cred?"Desativar digital/rosto":"Ativar digital/rosto")+'</button>'
+     +'<button class="btn sec" onclick="secUI(\'change\')">Trocar PIN</button><button class="btn del" onclick="secUI(\'remove\')">Remover proteção</button><button class="btn" onclick="closeSec()">Fechar</button></div>';
+  }
+  $("sec").innerHTML=h;
+}
+function setT(v){var L=getLock();L.t=parseInt(v,10)||1;setLock(L)}
+function okPin(p){return /^\d{4,6}$/.test(p)}
+function makeLock(pin,keep){
+  if(!window.crypto||!crypto.subtle){alert("Este navegador não permite criar o PIN.");return Promise.reject()}
+  var salt=b64(crypto.getRandomValues(new Uint8Array(16)));
+  return hashPin(pin,salt).then(function(h){setLock({h:h,s:salt,len:pin.length,t:keep?keep.t:1,cred:keep?keep.cred:null})});
+}
+function setPin(){
+  var a=$("p1").value,b=$("p2").value;
+  if(!okPin(a)){alert("O PIN precisa ter de 4 a 6 números.");return}
+  if(a!==b){alert("Os dois PINs não são iguais.");return}
+  makeLock(a).then(function(){secUI();alert("PIN ativado. Ele será pedido ao abrir o app.")});
+}
+function changePin(){
+  var L=getLock(),o=$("p0").value,a=$("p1").value,b=$("p2").value;
+  if(!okPin(a)){alert("O novo PIN precisa ter de 4 a 6 números.");return}
+  if(a!==b){alert("Os dois PINs novos não são iguais.");return}
+  hashPin(o,L.s).then(function(h){
+    if(h!==L.h){alert("O PIN atual está incorreto.");return}
+    return makeLock(a,L).then(function(){secUI();alert("PIN alterado.")});
+  });
+}
+function removePin(){
+  var L=getLock(),o=$("p0").value;
+  hashPin(o,L.s).then(function(h){
+    if(h!==L.h){alert("O PIN atual está incorreto.");return}
+    setLock(null);closeSec();alert("Proteção removida.");
+  });
+}
+document.addEventListener("visibilitychange",function(){
+  var L=getLock();if(!L)return;
+  if(document.documentElement.classList.contains("locked"))return;
+  if(document.hidden){hiddenAt=Date.now()}
+  else if(hiddenAt){var min=(Date.now()-hiddenAt)/60000;hiddenAt=0;if(min>=(L.t==null?1:L.t)){lockNow();if(L.cred)setTimeout(bioUnlock,300)}}
+});
+function go(k){cur=k;render();window.scrollTo(0,0)}
+function alertHtml(){
+  var n0=new Date(),t=new Date(n0.getFullYear(),n0.getMonth(),n0.getDate()),L=[];
+  Object.keys(S.months).forEach(function(k){
+    var y=+k.slice(0,4),mo=+k.slice(5);
+    S.months[k].exp.forEach(function(e){
+      if(e.p||!e.d)return;
+      var due=new Date(y,mo-1,Math.min(e.d,new Date(y,mo,0).getDate()));
+      var df=Math.round((due-t)/864e5);
+      if(df<=7)L.push({k:k,mo:mo,e:e,df:df});
+    });
+  });
+  if(!L.length)return "";
+  var ok=L.filter(function(x){return x.df>=0}).sort(function(a,b){return a.df-b.df});
+  var late=L.filter(function(x){return x.df<0}).sort(function(a,b){return b.df-a.df});
+  var all=ok.concat(late),show=all.slice(0,6);
+  var h='<div class="alert"><h4>⚠ Vencimentos ('+late.length+' atrasada'+(late.length===1?'':'s')+', '+ok.length+' nos próximos 7 dias)</h4>';
+  show.forEach(function(x){
+    var df=x.df,tx=df<0?"atrasada há "+(-df)+(df===-1?" dia":" dias"):df===0?"vence hoje":df===1?"vence amanhã":"vence em "+df+" dias";
+    var mes=x.k!==nowKey?" · "+MN[x.mo-1].slice(0,3):"";
+    h+='<div class="al '+(df<0?"bad":df===0?"hoje":"")+'" onclick="go(\''+x.k+'\')"><span class="a1">'+esc(x.e.n)+'<small>'+tx+mes+'</small></span><b>'+fmt(x.e.v)+'</b></div>';
+  });
+  if(all.length>show.length)h+='<div class="hint">e mais '+(all.length-show.length)+'. Toque numa conta para ir ao mês dela.</div>';
+  return h+'</div>';
+}
+function backup(){
+  try{
+    var b=new Blob([JSON.stringify(S)],{type:"application/json"}),a=document.createElement("a"),d=new Date();
+    a.href=URL.createObjectURL(b);
+    a.download="despesas-backup-"+d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+".json";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(a.href)},4000);
+  }catch(e){alert("Não consegui gerar o backup neste navegador.")}
+}
+function restore(inp){
+  var f=inp.files&&inp.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var j=JSON.parse(r.result);
+      if(!j||typeof j.months!=="object")throw 1;
+      for(var k in j.months){var x=j.months[k];if(!x||!Array.isArray(x.exp)||!Array.isArray(x.rec))throw 1}
+      if(!confirm("Substituir todos os dados atuais pelos do backup?"))return;
+      S=j;save();render();alert("Backup restaurado.");
+    }catch(e){alert("Esse arquivo não parece ser um backup deste app.")}
+  };
+  r.readAsText(f);inp.value="";
+}
+function aplic(on,isRec,n,v,d){
+  var c=0,o=on.trim().toLowerCase();
+  Object.keys(S.months).forEach(function(k){
+    if(k<=cur)return;
+    var m=S.months[k];
+    (isRec?m.rec:m.exp).forEach(function(e){
+      if(e.n.trim().toLowerCase()===o){e.n=n;e.v=v;if(!isRec)e.d=d;c++}
+    });
+  });
+  return c;
 }
 function copyPrev(){
   var p=S.months[prevKey()],m=M();
@@ -190,7 +402,7 @@ function $(i){return document.getElementById(i)}
 function openEd(id,type){
   var it=id?find(id):null;
   var isRec=it?!("g" in it):type==="r";
-  ed={id:id};
+  ed={id:id,on:(id&&find(id))?find(id).n:""};
   $("sh").textContent=it?"Editar":"Nova conta";
   $("ftype").style.display=it?"none":"block";
   $("fg").value=it?(isRec?"r":it.g):"f";
@@ -201,6 +413,8 @@ function openEd(id,type){
   $("fo").value=it&&it.o?it.o:"";
   $("frw").style.display=it?"none":"block";
   $("fr").value="";
+  $("faw").style.display=it?"flex":"none";
+  $("fa").checked=false;
   $("fdel").style.display=it?"block":"none";
   ed.rec=isRec;
   sync();
@@ -229,7 +443,10 @@ function saveEd(){
     if(it){it.n=n;it.v=v;it.d=d;it.p=$("fp").checked;it.o=o}
     else{m.exp.push({id:nid(),n:n,g:$("fg").value,d:d,v:v,p:$("fp").checked,o:o});rep({n:n,g:$("fg").value,d:d,v:v,o:o},false)}
   }
+  var ap=-1;
+  if(it&&$("fa").checked)ap=aplic(ed.on,ed.rec,n,v,d);
   save();closeEd();render();
+  if(ap>=0)alert(ap?"Também atualizado em "+ap+" lançamento"+(ap===1?"":"s")+" dos meses seguintes.":"Não encontrei lançamentos com esse nome nos meses seguintes.");
 }
 function del(){
   if(!ed.id||!confirm("Excluir este lançamento?"))return;
@@ -239,6 +456,8 @@ function del(){
   save();closeEd();render();
 }
 render();
+buildPad();
+(function(){var L=getLock();if(L){drawDots();if(L.cred)setTimeout(bioUnlock,400)}})();
 </script>
 <script>
 try{if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}}catch(e){}
