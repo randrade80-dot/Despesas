@@ -36,7 +36,7 @@ h2{font-size:15px;margin:18px 2px 6px;display:flex;justify-content:space-between
 .chk.on{background:var(--ok);border-color:var(--ok);color:#fff}
 .m{flex:1;min-width:0}
 .m b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.m small{color:var(--mute);font-size:13px}
+.m small{display:block;color:var(--mute);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .m small.atrasado{color:var(--bad);font-weight:600}
 .v{font-variant-numeric:tabular-nums;font-weight:600}
 .row.paid .m b,.row.paid .v{color:var(--mute);text-decoration:line-through}
@@ -76,9 +76,11 @@ h2{font-size:15px;margin:18px 2px 6px;display:flex;justify-content:space-between
 <div id="ftype"><label>Tipo</label>
 <select id="fg"><option value="f">Despesa fixa</option><option value="v">Despesa variável</option><option value="r">Receita</option></select></div>
 <label>Nome</label><input type="text" id="fn" placeholder="Ex.: Aluguel">
+<label>Observação (opcional)</label><input type="text" id="fo" placeholder="Ex.: parcela 3 de 10">
 <div class="two"><div><label>Valor (R$)</label><input type="number" id="fv" inputmode="decimal" step="0.01"></div>
 <div id="fdw"><label>Vence no dia</label><input type="number" id="fd" inputmode="numeric" min="1" max="31"></div></div>
 <label class="ck" id="fpw"><input type="checkbox" id="fp"> Já está pago</label>
+<div id="frw"><label>Repetir nos próximos meses</label><select id="fr"><option value="0">Não repetir</option><option value="1">Próximo mês</option><option value="2">Próximos 2 meses</option><option value="3">Próximos 3 meses</option><option value="6">Próximos 6 meses</option><option value="dez">Até dezembro</option></select></div>
 <div class="acts"><button class="btn del" id="fdel" onclick="del()">Excluir</button><button class="btn sec" onclick="closeEd()">Cancelar</button><button class="btn" onclick="saveEd()">Salvar</button></div>
 </div>
 </div>
@@ -143,6 +145,7 @@ function tog(id){var e=find(id);if(e){e.p=!e.p;save();render()}}
 function rowExp(e){
   var sub=e.p?"pago":(late(e)?'<span class="atrasado">atrasado</span>':"a pagar");
   if(e.d)sub=(e.p?"":"vence dia "+e.d+" · ")+sub;
+  if(e.o)sub+=" · "+esc(e.o);
   return '<div class="row'+(e.p?' paid':'')+'" onclick="openEd(\''+e.id+'\')"><button class="chk'+(e.p?' on':'')+'" onclick="event.stopPropagation();tog(\''+e.id+'\')" aria-label="Marcar como pago">✓</button><div class="m"><b>'+esc(e.n)+'</b><small>'+sub+'</small></div><div class="v">'+fmt(e.v)+'</div></div>';
 }
 function group(t,arr){
@@ -169,7 +172,7 @@ function render(){
     h+=group("Contas variáveis",m.exp.filter(function(e){return e.g!=="f"}));
     if(m.rec.length){
       h+='<h2><span>Receitas</span><span>'+fmt(rec)+'</span></h2><div class="list">'+m.rec.map(function(r){
-        return '<div class="row" onclick="openEd(\''+r.id+'\')"><div class="m"><b>'+esc(r.n)+'</b></div><div class="v" style="color:var(--ok)">'+fmt(r.v)+'</div></div>'}).join("")+'</div>';
+        return '<div class="row" onclick="openEd(\''+r.id+'\')"><div class="m"><b>'+esc(r.n)+'</b>'+(r.o?'<small>'+esc(r.o)+'</small>':'')+'</div><div class="v" style="color:var(--ok)">'+fmt(r.v)+'</div></div>'}).join("")+'</div>';
     }
   }
   document.getElementById("app").innerHTML=h;
@@ -177,8 +180,8 @@ function render(){
 function copyPrev(){
   var p=S.months[prevKey()],m=M();
   if(!p||(!p.exp.length&&!p.rec.length)){alert("O mês anterior também está vazio. Use o botão + para lançar.");return}
-  p.exp.filter(function(e){return e.g==="f"}).forEach(function(e){m.exp.push({id:nid(),n:e.n,g:"f",d:e.d,v:e.v,p:false})});
-  p.rec.forEach(function(r){m.rec.push({id:nid(),n:r.n,v:r.v})});
+  p.exp.filter(function(e){return e.g==="f"}).forEach(function(e){m.exp.push({id:nid(),n:e.n,g:"f",d:e.d,v:e.v,p:false,o:e.o})});
+  p.rec.forEach(function(r){m.rec.push({id:nid(),n:r.n,v:r.v,o:r.o})});
   save();render();
 }
 
@@ -195,6 +198,9 @@ function openEd(id,type){
   $("fv").value=it?it.v:"";
   $("fd").value=it&&it.d?it.d:"";
   $("fp").checked=it&&it.p?true:false;
+  $("fo").value=it&&it.o?it.o:"";
+  $("frw").style.display=it?"none":"block";
+  $("fr").value="0";
   $("fdel").style.display=it?"block":"none";
   ed.rec=isRec;
   sync();
@@ -203,16 +209,26 @@ function openEd(id,type){
 }
 function sync(){var r=ed.rec;$("fdw").style.display=r?"none":"block";$("fpw").style.display=r?"none":"flex"}
 function closeEd(){$("ov").classList.remove("on")}
+function shiftKey(k,d){var y=+k.slice(0,4),m=+k.slice(5)-1+d;y+=Math.floor(m/12);m=((m%12)+12)%12;return y+"-"+pad(m+1)}
+function rep(b,isRec){
+  var r=$("fr").value;if(r==="0")return;
+  var n=r==="dez"?12-(+cur.slice(5)):parseInt(r,10);
+  for(var i=1;i<=n;i++){
+    var mm=S.months[shiftKey(cur,i)]||(S.months[shiftKey(cur,i)]={exp:[],rec:[]});
+    if(isRec)mm.rec.push({id:nid(),n:b.n,v:b.v,o:b.o});
+    else mm.exp.push({id:nid(),n:b.n,g:b.g,d:b.d,v:b.v,p:false,o:b.o});
+  }
+}
 function saveEd(){
   var n=$("fn").value.trim(),v=parseFloat($("fv").value);
   if(!n||isNaN(v)){alert("Preencha o nome e o valor.");return}
-  var m=M(),it=ed.id?find(ed.id):null;
+  var m=M(),it=ed.id?find(ed.id):null,o=$("fo").value.trim();
   if(ed.rec){
-    if(it){it.n=n;it.v=v}else m.rec.push({id:nid(),n:n,v:v});
+    if(it){it.n=n;it.v=v;it.o=o}else{m.rec.push({id:nid(),n:n,v:v,o:o});rep({n:n,v:v,o:o},true)}
   }else{
     var d=parseInt($("fd").value,10)||0;if(d<0||d>31)d=0;
-    if(it){it.n=n;it.v=v;it.d=d;it.p=$("fp").checked}
-    else m.exp.push({id:nid(),n:n,g:$("fg").value,d:d,v:v,p:$("fp").checked});
+    if(it){it.n=n;it.v=v;it.d=d;it.p=$("fp").checked;it.o=o}
+    else{m.exp.push({id:nid(),n:n,g:$("fg").value,d:d,v:v,p:$("fp").checked,o:o});rep({n:n,g:$("fg").value,d:d,v:v,o:o},false)}
   }
   save();closeEd();render();
 }
