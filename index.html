@@ -80,7 +80,7 @@ h2{font-size:15px;margin:18px 2px 6px;display:flex;justify-content:space-between
 <div class="two"><div><label>Valor (R$)</label><input type="number" id="fv" inputmode="decimal" step="0.01"></div>
 <div id="fdw"><label>Vence no dia</label><input type="number" id="fd" inputmode="numeric" min="1" max="31"></div></div>
 <label class="ck" id="fpw"><input type="checkbox" id="fp"> Já está pago</label>
-<div id="frw"><label>Repetir nos próximos meses</label><select id="fr"><option value="0">Não repetir</option><option value="1">Próximo mês</option><option value="2">Próximos 2 meses</option><option value="3">Próximos 3 meses</option><option value="6">Próximos 6 meses</option><option value="dez">Até dezembro</option></select></div>
+<div id="frw"><label>Repetir nos próximos meses (quantos?)</label><input type="number" id="fr" inputmode="numeric" min="0" max="60" placeholder="0 = não repetir"></div>
 <div class="acts"><button class="btn del" id="fdel" onclick="del()">Excluir</button><button class="btn sec" onclick="closeEd()">Cancelar</button><button class="btn" onclick="saveEd()">Salvar</button></div>
 </div>
 </div>
@@ -200,7 +200,7 @@ function openEd(id,type){
   $("fp").checked=it&&it.p?true:false;
   $("fo").value=it&&it.o?it.o:"";
   $("frw").style.display=it?"none":"block";
-  $("fr").value="0";
+  $("fr").value="";
   $("fdel").style.display=it?"block":"none";
   ed.rec=isRec;
   sync();
@@ -211,8 +211,7 @@ function sync(){var r=ed.rec;$("fdw").style.display=r?"none":"block";$("fpw").st
 function closeEd(){$("ov").classList.remove("on")}
 function shiftKey(k,d){var y=+k.slice(0,4),m=+k.slice(5)-1+d;y+=Math.floor(m/12);m=((m%12)+12)%12;return y+"-"+pad(m+1)}
 function rep(b,isRec){
-  var r=$("fr").value;if(r==="0")return;
-  var n=r==="dez"?12-(+cur.slice(5)):parseInt(r,10);
+  var n=parseInt($("fr").value,10)||0;if(n<=0)return;if(n>60)n=60;
   for(var i=1;i<=n;i++){
     var mm=S.months[shiftKey(cur,i)]||(S.months[shiftKey(cur,i)]={exp:[],rec:[]});
     if(isRec)mm.rec.push({id:nid(),n:b.n,v:b.v,o:b.o});
