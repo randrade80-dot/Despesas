@@ -1,6 +1,6 @@
 {
-  "name": "Despesas 2026",
-  "short_name": "Despesas",
+  "name": "Contas em Dia",
+  "short_name": "Contas em Dia",
   "lang": "pt-BR",
   "start_url": "./",
   "scope": "./",

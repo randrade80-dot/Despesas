@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1f5f4a">
-<title>Despesas 2026</title>
+<title>Contas em Dia</title>
 <style>
 :root{color-scheme:light dark;--bg:#f3f1ec;--card:#fffdf9;--ink:#1d2421;--mute:#6b7670;--line:#e1ddd3;--accent:#1f5f4a;--onacc:#fff;--ok:#1f7a4d;--warn:#b86e00;--bad:#b3322a;--track:#e6e2d8;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -94,7 +94,7 @@ html.locked #lock{display:flex}
 </header>
 <main id="app"></main>
 </div>
-<div id="lock"><div class="lk"><div class="lt">🔒 Despesas 2026</div><div class="ls" id="lmsg">Digite o PIN</div><div class="dots" id="ldots"></div><div class="pad" id="lpad"></div><button class="bio" id="lbio" onclick="bioUnlock()">Usar digital / rosto</button></div></div>
+<div id="lock"><div class="lk"><div class="lt">🔒 Contas em Dia</div><div class="ls" id="lmsg">Digite o PIN</div><div class="dots" id="ldots"></div><div class="pad" id="lpad"></div><button class="bio" id="lbio" onclick="bioUnlock()">Usar digital / rosto</button></div></div>
 <div class="ov" id="ov2" onclick="if(event.target===this)closeSec()"><div class="sheet" id="sec"></div></div>
 <input type="file" id="fi" accept=".json,application/json" style="display:none" onchange="restore(this)">
 <button class="fab" onclick="openEd(null,'exp')" aria-label="Adicionar">+</button>
@@ -264,7 +264,7 @@ function enableBio(){
   if(!window.PublicKeyCredential||!navigator.credentials){alert("Este navegador não permite digital/rosto para o app.");return}
   navigator.credentials.create({publicKey:{
     challenge:crypto.getRandomValues(new Uint8Array(32)),
-    rp:{name:"Despesas 2026"},
+    rp:{name:"Contas em Dia"},
     user:{id:crypto.getRandomValues(new Uint8Array(16)),name:"despesas",displayName:"Despesas"},
     pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],
     authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required",residentKey:"discouraged"},
